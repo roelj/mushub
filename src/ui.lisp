@@ -130,11 +130,12 @@
   "Wrapper for the main function that handles various signals."
 
   (handler-case (main-real)
-    (#+sbcl    sb-sys:interactive-interrupt
-     #+ccl     ccl:interrupt-signal-condition
-     #+clisp   system::simple-interrupt-condition
-     #+ecl     ext:interactive-interrupt
-     #+allegro excl:interrupt-signal
+    (#+allegro   excl:interrupt-signal
+     #+ccl       ccl:interrupt-signal-condition
+     #+clisp     system::simple-interrupt-condition
+     #+ecl       ext:interactive-interrupt
+     #+sbcl      sb-sys:interactive-interrupt
+     #+lispworks mp:process-interrupt
      () (progn
           (format *standard-output* "~%")
           (log:info "Shutting down server.")
