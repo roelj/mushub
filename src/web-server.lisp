@@ -128,11 +128,6 @@
       (enable-cached-response)
       *firacode-medium-ttf*)
 
-    (easy-routes:defroute firacode-medium-woff ("/static/fonts/FiraCode-Medium.woff") ()
-      (setf (hunchentoot:content-type*) "font/woff")
-      (enable-cached-response)
-      *firacode-medium-woff*)
-
     (easy-routes:defroute firacode-medium-woff2 ("/static/fonts/FiraCode-Medium.woff2") ()
       (setf (hunchentoot:content-type*) "font/woff2")
       (enable-cached-response)
@@ -142,11 +137,6 @@
       (setf (hunchentoot:content-type*) "font/ttf")
       (enable-cached-response)
       *mavenpro-medium-ttf*)
-
-    (easy-routes:defroute mavenpro-medium-woff ("/static/fonts/MavenPro-Medium.woff") ()
-      (setf (hunchentoot:content-type*) "font/woff")
-      (enable-cached-response)
-      *mavenpro-medium-woff*)
 
     (easy-routes:defroute mavenpro-medium-woff2 ("/static/fonts/MavenPro-Medium.woff2") ()
       (setf (hunchentoot:content-type*) "font/woff2")
