@@ -24,6 +24,7 @@
                       (:file "images")
                       (:file "javascript")
                       (:file "fonts")
+                      (:file "stylesheet")
                       (:file "track-visualisation")
                       (:file "web-server")
                       (:file "ui"))))
