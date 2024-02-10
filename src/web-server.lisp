@@ -31,8 +31,8 @@
        (:html
         (:head (:title "Music Hub")
                (:link  :rel "icon"
-                       :type "image/png"
-                       :href "/static/images/logo-dark.png")
+                       :type "image/svg+xml"
+                       :href "/static/images/logo-dark.svg")
                (:meta  :name "description" :content "Musician's Hub")
                (:meta  :name "keywords"    :content "mushub")
                (:meta  :name "author"      :content "Roel Janssen")
@@ -44,7 +44,7 @@
         (:body
          (:div#wrapper
           (:div#header
-           (:a :href "/" (:img :src "/static/images/logo.png" :alt "Logo"))
+           (:a :href "/" (:img :src "/static/images/logo.svg" :alt "Logo"))
            (:div#subheader
             (:form :action "/project" :method "post"
              (:input#song-code :type "text" :name "project-code")
@@ -109,6 +109,16 @@
 
     ;; IMAGES
     ;; ------------------------------------------------------------------------
+
+    (easy-routes:defroute logo-svg ("/static/images/logo.svg") ()
+      (setf (hunchentoot:content-type*) "image/svg+xml; charset=utf-8")
+      (enable-cached-response)
+      *logo-svg*)
+
+    (easy-routes:defroute logo-dark-svg ("/static/images/logo-dark.svg") ()
+      (setf (hunchentoot:content-type*) "image/svg+xml; charset=utf-8")
+      (enable-cached-response)
+      *logo-dark-svg*)
 
     (easy-routes:defroute logo-png ("/static/images/logo.png") ()
       (setf (hunchentoot:content-type*) "image/png")
