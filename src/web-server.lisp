@@ -39,8 +39,8 @@
                (:link :rel "stylesheet" :type "text/css" :href "/css/main.css")
                (:style :type "text/css"
                        (:raw (cl-css:css *stylesheet*)))
-               (:script :src "/scripts/jquery-3.6.0.min.js")
-               (:script :src "/scripts/file-uploader.js"))
+               (:script :src "/scripts/jquery-3.7.1.min.js")
+               (:script :src "/scripts/file-uploader.js")
         (:body
          (:div#wrapper
           (:div#header
@@ -155,10 +155,10 @@
 
     ;; JAVASCRIPT DEPENDENCIES
     ;; ------------------------------------------------------------------------
-    (easy-routes:defroute jquery-3-6-0-min-js ("/scripts/jquery-3.6.0.min.js") ()
+    (easy-routes:defroute jquery-3-7-1-min-js ("/scripts/jquery-3.7.1.min.js") ()
       (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
       (enable-cached-response)
-      *jquery-3-6-0-min-js*)
+      *jquery-3-7-1-min-js*)
 
     ;; STYLESHEET
     ;; ------------------------------------------------------------------------
