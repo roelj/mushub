@@ -7,7 +7,7 @@
 (defvar *server-start-date*
   (multiple-value-bind
         (second minute hour date month year day-of-week dst-p timezone)
-	    (get-decoded-time)
+      (get-decoded-time)
     (format nil "~a, ~2,'0d ~a ~d ~2,'0d:~2,'0d:~2,'0d GMT"
             (nth day-of-week *days*)
             date (nth (1- month) *months*) year
@@ -15,21 +15,25 @@
 
 (defmacro enable-cached-response ()
   '(progn
+    (setf (hunchentoot:header-out :Server) *server-name*)
     (setf (hunchentoot:header-out :Last-Modified hunchentoot:*reply*) *server-start-date*)
-    (setf (hunchentoot:header-out :Cache-Control hunchentoot:*reply*) "max-age=31536000")))
+    (setf (hunchentoot:header-out :X-Content-Type-Options hunchentoot:*reply*) "nosniff")
+    (setf (hunchentoot:header-out :Cache-Control hunchentoot:*reply*) "max-age=31536000, immutable")))
 
 (defmacro html-handler (procedure uri body)
   `(easy-routes:defroute ,procedure (,uri) ()
      (setf (hunchentoot:content-type*) "text/html; charset=utf-8")
-     (setf (hunchentoot:header-out :server) *server-name*)
+     (setf (hunchentoot:header-out :Server) *server-name*)
      (with-template-page ,body)))
 
 (defmacro with-template-page (content)
   (let ((*print-pretty* t))
     `(spinneret:with-html-string
        (:doctype)
-       (:html
+       (:html :lang "en"
         (:head (:title "Music Hub")
+               (:meta  :name "viewport"
+                       :content "width=700")
                (:link  :rel "icon"
                        :type "image/svg+xml"
                        :href "/static/images/logo-dark.svg")
