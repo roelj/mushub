@@ -4,12 +4,16 @@
 
 (defun show-usage (usage-of)
   "Show a usage message for USAGE-OF."
-  (opts:describe
-   :prefix   (concatenate 'string "mushub " *version*)
-   :suffix   "Report bugs to rrejanssen@gmail.com"
-   :usage-of (if (eq usage-of nil)
-                 "mushub"
-                 (concatenate 'string "mushub " usage-of))))
+  (if (eq usage-of nil)
+      (progn
+	(format t "~a~%~%~a~%~%Available subcommands:~%  initialize~%  web~%~%~a~%"
+		(concatenate 'string "mushub " *version*)
+		"Usage: mushub [initialize|web] [-h|--help] [-v|--version]"
+		"Report bugs to rrejanssen@gmail.com"))
+      (opts:describe
+       :prefix   (concatenate 'string "mushub " *version*)
+       :suffix   "Report bugs to rrejanssen@gmail.com"
+       :usage-of (concatenate 'string "mushub " usage-of))))
 
 (defun unknown-option (condition)
   (format t "warning: ~s option is unknown!~%" (opts:option condition))
@@ -107,15 +111,15 @@
      :long "port"
      :arg-parser #'parse-integer
      :default 9000)
-    (:name :document-root
-     :description "The document root for static files."
+    (:name :storage-root
+     :description "The storage location for uploaded files and metadata."
      :short #\d
-     :long "document-root"
+     :long "storage-root"
      :arg-parser #'identity
-     :default #P"/home/roel/Programming/mushub/webroot/"))
+     :default (truename #P".")))
 
   (with-option-handling options free-args
-    (let ((port 9000))
+    (progn
       (when (getf options :help)
         (show-usage "web")
         (opts:exit 0))
