@@ -55,17 +55,23 @@
              (:input#submit-btn :type "submit" :value "GO"))))
           (:div#content ,content)))))))
 
-(defun respond-400 (message)
-  (setf (hunchentoot:return-code*) 400)
-  (setf (hunchentoot:content-type*) "application/json; charset=utf-8")
-  (setf (hunchentoot:header-out :server) *server-name*)
-  (json:encode-json-to-string `(("message" . ,message))))
+(defun respond-with-code (message code)
+  (cond
+    ((equal code 204)
+     (setf (hunchentoot:return-code*) 204)
+     (setf (hunchentoot:content-type*) nil)
+     (setf (hunchentoot:header-out :Server) *server-name*)
+     nil)
+    (t
+     (setf (hunchentoot:return-code*) code)
+     (setf (hunchentoot:content-type*) "application/json; charset=utf-8")
+     (setf (hunchentoot:header-out :Server) *server-name*)
+     (json:encode-json-to-string `(("message" . ,message))))))
 
-(defun respond-500 (message)
-  (setf (hunchentoot:return-code*) 500)
-  (setf (hunchentoot:content-type*) "application/json; charset=utf-8")
-  (setf (hunchentoot:header-out :server) *server-name*)
-  (json:encode-json-to-string `(("message" . ,message))))
+(defun respond-400 (message) (respond-with-code message 400))
+(defun respond-500 (message) (respond-with-code message 500))
+(defun respond-406 (message) (respond-with-code message 406))
+(defun respond-405 (message) (respond-with-code message 405))
 
 ;; ERROR HANDLERS
 ;; ----------------------------------------------------------------------------
