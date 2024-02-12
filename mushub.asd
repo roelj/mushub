@@ -6,7 +6,8 @@
   :license         "AGPLv3+"
   :version         "0.0.1"
   :serial          t
-  :depends-on      (#:cl-css
+  :depends-on      (#:cffi
+                    #:cl-css
                     #:cl-json
                     #:cl-svg
                     #:easy-routes
@@ -25,6 +26,7 @@
                       (:file "javascript")
                       (:file "fonts")
                       (:file "persistence")
+                      (:file "sndfile")
                       (:file "stylesheet")
                       (:file "track-visualisation")
                       (:file "web-server")
