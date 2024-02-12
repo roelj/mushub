@@ -18,8 +18,6 @@
   (:import-from :log4cl       :info)
   (:import-from :easy-routes  :easy-routes-acceptor)
   (:import-from :uuid         :print-bytes :make-v4-uuid)
-  (:import-from :parenscript  :chain :create :ps)
-  (:import-from :ironclad     :make-digest :update-digest :produce-digest
-                              :byte-array-to-hex-string)
-  (:use :cl)
+  (:import-from :parenscript  :chain :create :FALSE :ps :new)
+  (:use :cl :cffi)
   (:export :main :start-instance :stop-instance :*version*))

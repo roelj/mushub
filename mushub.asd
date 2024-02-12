@@ -16,21 +16,20 @@
                     #:parenscript
                     #:spinneret
                     #:unix-opts
-                    #:uuid
-                    #:ironclad)
+                    #:uuid)
   :components      ((:module "src"
                      :components
                      ((:file "package")
                       (:file "utils")
+                      (:file "fonts")
                       (:file "images")
                       (:file "javascript")
-                      (:file "fonts")
                       (:file "persistence")
                       (:file "sndfile")
                       (:file "stylesheet")
                       (:file "track-visualisation")
-                      (:file "web-server")
-                      (:file "ui"))))
+                      (:file "ui")
+                      (:file "web-server"))))
   :build-operation "program-op"
   :build-pathname  "mushub"
   :entry-point     "mushub:main")
