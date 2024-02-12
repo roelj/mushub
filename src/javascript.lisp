@@ -2,6 +2,51 @@
 
 (in-package :mushub)
 
+(defparameter *project-form-js*
+  (parenscript:ps
+    (ps:var task-identifier nil)
+    (defun save-form ()
+      (let ((project-id (ps:chain window location pathname (split "/") (pop)))
+            (data      (create :title (ps:chain (j-query "#title") (val)))))
+        (if (parenscript:chain window navigator on-line)
+          (parenscript:chain j-query
+            (ajax (parenscript:create
+                   :url (+ "/api/v1/project/" project-id)
+                   :type "PUT"
+                   :data (ps:chain *json* (stringify data))
+                   "contentType" "application/json"))
+            (done (lambda (data text-status request)
+                    (let ((timestamp (new (parenscript:chain (*date) (to-locale-time-string)))))
+                      (parenscript:chain (j-query "#last-modified p")
+                                         (html (+ "Last saved: " timestamp))
+                                         (remove-class "error-text")))))
+            (fail (lambda (data text-status message)
+                    (parenscript:chain (j-query "#last-modified p")
+                                       (html "Failed to save!")
+                                       (add-class "error-text"))
+                    (setf task-identifier (set-timeout save-form 5000)))))
+          (progn
+            (parenscript:chain (j-query "#last-modified p")
+                                       (html "We seem to be offline.")
+                                       (add-class "error-text"))
+            (parenscript:chain window (add-event-listener "online" save-form)))))
+      (setf task-identifier nil)
+      null)
+
+    (defun automatically-save-form ()
+      (unless (equal task-identifier null)
+        (clear-timeout task-identifier))
+      (setf task-identifier (set-timeout save-form 1000))
+      null)
+
+    (parenscript:chain
+     (j-query document)
+     (ready (lambda ()
+              (parenscript:chain
+               (j-query "form#project-form input[type=text]#title")
+               (on "input" automatically-save-form))
+              null)))))
+
 (defvar *file-uploader-js*
   (parenscript:ps
     (defun perform-upload (files current-file project-id)

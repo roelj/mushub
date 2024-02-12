@@ -20,6 +20,12 @@
     (setf (hunchentoot:header-out :X-Content-Type-Options hunchentoot:*reply*) "nosniff")
     (setf (hunchentoot:header-out :Cache-Control hunchentoot:*reply*) "max-age=31536000, immutable")))
 
+(defmacro disable-cached-response ()
+  '(progn
+    (setf (hunchentoot:header-out :Server) *server-name*)
+    (setf (hunchentoot:header-out :X-Content-Type-Options hunchentoot:*reply*) "nosniff")
+    (setf (hunchentoot:header-out :Cache-Control hunchentoot:*reply*) "no-cache")))
+
 (defmacro html-handler (procedure uri body)
   `(easy-routes:defroute ,procedure (,uri) ()
      (setf (hunchentoot:content-type*) "text/html; charset=utf-8")
@@ -45,15 +51,20 @@
                        (:raw (cl-css:css *stylesheet*)))
                (:script :src "/scripts/jquery-3.7.1.min.js")
                (:script :src "/scripts/file-uploader.js")
+               (:script :src "/scripts/project.js"))
         (:body
          (:div#wrapper
           (:div#header
            (:a :href "/" (:img :src "/static/images/logo.svg" :alt "Logo"))
            (:div#subheader
             (:form :action "/project" :method "post"
-             (:input#song-code :type "text" :name "project-code")
-             (:input#submit-btn :type "submit" :value "GO"))))
-          (:div#content ,content)))))))
+              (:input#song-code :type "text" :name "project-code"
+                                :title "Project code"
+                                :placeholder "")
+              (:input#submit-btn :type "submit" :value "GO"))))
+          (:div#content ,content)
+          (:div#footer
+           (:p ""))))))))
 
 (defun respond-with-code (message code)
   (cond
@@ -84,19 +95,159 @@
      (let ((*print-pretty* nil))
        (with-template-page ,body))))
 
-(defun start-instance (port)
-  "Returns a HUNCHENTOOT:EASY-ACCEPTOR instance."
-  (let* ((access-log   (merge-pathnames "mushub-access.log"
-                                        (user-homedir-pathname)))
-         (messages-log (merge-pathnames "mushub-messages.log"
-                                        (user-homedir-pathname)))
-         (server  (make-instance
-                   'easy-routes:easy-routes-acceptor
-                   :port                    port
-                   ;; :access-log-destination  access-log
-                   ;; :message-log-destination messages-log 
-                   )))
+(defun metadata-for-project (metadata-directory code)
+  (let* ((filename (merge-pathnames (concatenate 'string code ".lisp")
+                                    metadata-directory)))
+    (handler-case
+        (eval
+         (with-open-file (handle filename
+                                 :direction :input
+                                 :if-does-not-exist :error)
+           (read handle)))
+      (file-error (error)
+        (log:error error)
+        nil))))
 
+(defun page-project-code (metadata-directory code)
+  (let ((metadata (metadata-for-project metadata-directory code)))
+    (with-template-page
+      (list (:form :id "project-form"
+             (:div#last-modified (:p "Unsaved"))
+             (:input :type "text"
+                     :name "title"
+                     :id "title"
+                     :placeholder "Untitled"
+                     :value (if (typep metadata 'project) (project-title metadata) ""))
+             (:p (:strong :class "no-select" "Project identifier:")
+                 (:code :id "project-uuid" code))
+             (:p "")
+             (:div#file-upload-field :class "upload-wrapper record-type-field"
+              (:input#file :type "file"
+                           :name "file"
+                           :multiple t
+                           :aria-label "Upload file")
+              (:div#file-upload :class "upload-container no-select"
+                (:h4 "Drag file(s) here")
+                (:p "Or click to open a file dialog."))))))))
+
+(defun page-project (metadata-directory)
+  (let ((code (hunchentoot:post-parameter "project-code")))
+    (if (string= code "")
+      (let* ((identifier (generate-identifier))
+             (filename   (merge-pathnames
+                          (concatenate 'string identifier ".lisp")
+                          metadata-directory))
+             (metadata   (make-instance 'project)))
+        (log:info "Creating project metadata file ~s." filename)
+        (handler-case
+            (progn
+              (with-open-file (handle filename
+                                      :direction :output
+                                      :if-does-not-exist :create)
+                (write (make-load-form metadata) :stream handle))
+              (hunchentoot:redirect
+               (concatenate 'string "/project/" identifier) :code 302))
+          (file-error (error)
+            (log:error error)
+            (respond-500 (format nil "~a" error)))))
+      (progn
+        (log:info "Client: ~a:~d"
+                  (hunchentoot:real-remote-addr *request*)
+                  (hunchentoot:remote-port *request*))
+        (hunchentoot:redirect (concatenate 'string "/project/" code)
+                              :code 302)))))
+
+(defun page-credits ()
+  (with-template-page
+    (list (:h1 "Software used to build this")
+          (:table :id "credits-table"
+           (:thead
+            (:tr
+             (:th "Software")
+             (:th "Purpose")))
+           (:tbody
+            (:tr
+             (:td (:a :href "https://lisp-lang.org/" "Common Lisp"))
+             (:td "Programming environment."))
+            (:tr
+             (:td (:a :href "https://edicl.github.io/hunchentoot/" "hunchentoot"))
+             (:td "Web server in Common Lisp."))
+            (:tr
+             (:td (:a :href "https://cffi.common-lisp.dev/" "CFFI"))
+             (:td "Access libsndfile's C API."))
+            (:tr
+             (:td (:a :href "https://libsndfile.github.io/libsndfile/" "libsndfile"))
+             (:td "Reading audio files for both metadata and audio signal."))))
+          (:p ""))))
+
+(defun api-update-project-metadata (metadata-directory code)
+  "Implements the automatic form saving of the project page."
+  (let ((method (hunchentoot:request-method hunchentoot:*request*)))
+    (cond
+      ((eq method :put)
+       (handler-case
+           (let* ((filename  (merge-pathnames (concatenate 'string code ".lisp")
+                                              metadata-directory))
+                  (post-data (json:decode-json-from-string
+                               (hunchentoot:raw-post-data :force-text t)))
+                  (metadata  (eval
+                              (with-open-file (handle filename
+                                                      :direction :input
+                                                      :if-does-not-exist :error)
+                                (read handle)))))
+             (log:info "Parsed POST data: '~a'." post-data)
+             (set-project-title (assoc-ref :title post-data) metadata)
+             (with-open-file (handle filename
+                                     :direction :output
+                                     :if-exists :supersede)
+               (write (make-load-form metadata) :stream handle))
+             (respond-with-code nil 204))
+         (file-error (error)
+           (log:error error)
+           (respond-500 (format nil "~a" error)))))
+      (t
+       (respond-405 "Only POST is allowed here.")))))
+
+(defun page-upload-track (tracks-directory code)
+  (let* ((file-spec (hunchentoot:post-parameter "file")))
+    (cond
+      ((and (typep file-spec 'list)
+            (typep (nth 2 file-spec) 'string)
+            (string= (subseq (nth 2 file-spec) 0 5) "audio"))
+       (let* ((local-filename (car file-spec))
+              (metadata       (multiple-value-bind (handle metadata)
+                                  (audio-metadata local-filename)
+                                metadata))
+              (track-uuid     (generate-identifier)))
+         (log:info "Read metadata for ~a: ~s" track-uuid metadata)
+         (uiop:copy-file local-filename (merge-pathnames track-uuid tracks-directory))
+         (respond-with-code nil 204)))
+      ((and (typep file-spec 'list)
+            (typep (nth 2 file-spec) 'string))
+       (let ((filetype (nth 2 file-spec)))
+         (log:info "User uploaded ~s." filetype)
+         (respond-400 (format nil "'~a' is not a supported file type." filetype))))
+      (t
+       (log:info "Woops, file-spec set to: ~a." file-spec)
+       (respond-406 "Please submit a 'multipart/form-data request'.")))))
+
+(defun start-instance (port &optional (storage-root (user-homedir-pathname)))
+  "Returns a HUNCHENTOOT:EASY-ACCEPTOR instance."
+  (let* ((logs-directory     (merge-pathnames "logs/" storage-root))
+         (tracks-directory   (merge-pathnames "tracks/" storage-root))
+         (metadata-directory (merge-pathnames "metadata/" storage-root))
+         (access-log         (merge-pathnames "access.log" logs-directory))
+         (messages-log       (merge-pathnames "messages.log" logs-directory))
+         (server             (make-instance
+                              'easy-routes:easy-routes-acceptor
+                              :address                 "0.0.0.0"
+                              :port                    port
+                              :access-log-destination  access-log
+                              :message-log-destination messages-log)))
+    (mapcar #'ensure-directories-exist
+            (list tracks-directory
+                  metadata-directory
+                  logs-directory))
     (log:info "Starting web server at ~a" port)
     (hunchentoot:start server)
 
@@ -163,12 +314,22 @@
       (enable-cached-response)
       *mavenpro-medium-woff2*)
 
-    ;; JAVASCRIPT DEPENDENCIES
+    ;; JAVASCRIPT
     ;; ------------------------------------------------------------------------
     (easy-routes:defroute jquery-3-7-1-min-js ("/scripts/jquery-3.7.1.min.js") ()
       (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
       (enable-cached-response)
       *jquery-3-7-1-min-js*)
+
+    (easy-routes:defroute file-uploader ("/scripts/file-uploader.js") ()
+      (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
+      (enable-cached-response)
+      *file-uploader-js*)
+
+    (easy-routes:defroute project-form-js ("/scripts/project.js") ()
+      (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
+      (enable-cached-response)
+      *project-form-js*)
 
     ;; STYLESHEET
     ;; ------------------------------------------------------------------------
@@ -177,58 +338,45 @@
       (enable-cached-response)
       (cl-css:css *stylesheet*))
 
-    ;; JAVASCRIPT FOR FILE UPLOADER
-    ;; ------------------------------------------------------------------------
-    (easy-routes:defroute file-uploader ("/scripts/file-uploader.js") ()
-      (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
-      (enable-cached-response)
-      *file-uploader-js*)
-
     ;; MAIN PAGE
     ;; ------------------------------------------------------------------------
     (html-handler web-root "/"
      (list (:h1 "Music Hub")
-           (:p "Welcome to MusicHub.")
+           (:p "Welcome to this Music Hub.")
+           (:p "This hub will use a " (:strong "sample rate of 48kHz") " and a "
+               (:strong "sample format of 24-bits integers.")
+               "Audio tracks with other sample rates or sample formats "
+               "will be converted.")
            (:div.center
             (:form :action "/project" :method "post"
-              (:input :type "hidden" :name "project-code" :value "")
+                   (:input :type "hidden" :name "project-code" :value ""
+                           :title "Project code"
+                           :placeholder "")
               (:input.action-button :type "submit" :value "New song")))))
 
-    ;; PROJECT REDIRECTOR
+    (easy-routes:defroute credits ("/credits") ()
+      (page-credits))
+
+    ;; PROJECT
     ;; ------------------------------------------------------------------------
     (easy-routes:defroute project ("/project" :method :post) ()
-      (let ((code (hunchentoot:post-parameter "project-code")))
-        (log:info "Client: ~a:~d"
-                  (hunchentoot:real-remote-addr *request*)
-                  (hunchentoot:remote-port *request*))
-        (hunchentoot:redirect
-         (format nil "/project/~a" (if (string= code "")
-                                       (generate-identifier)
-                                       code))
-         :code 302
-         :protocol :https)))
+      (disable-cached-response)
+      (page-project metadata-directory))
 
-    ;; PROJECT PAGE
-    ;; ------------------------------------------------------------------------
     (easy-routes:defroute project-code ("/project/:code") ()
-      (with-template-page
-          (list (:h1 code)
-                (:div#file-upload-field :class "upload-wrapper record-type-field"
-                  (:input#file :type "file"
-                               :name "file"
-                               :multiple t
-                               :aria-label "Upload file")
-                  (:div#file-upload :class "upload-container"
-                    (:h4 "Drag audio file(s) here")
-                    (:p "Or click to open a file dialog."))))))
+      (disable-cached-response)
+      (page-project-code metadata-directory code))
+
+    (easy-routes:defroute api-project-metadata ("/api/v1/project/:code" :method :put) ()
+      (disable-cached-response)
+      (api-update-project-metadata metadata-directory code))
 
     ;; UPLOAD TRACK
     ;; ------------------------------------------------------------------------
     (easy-routes:defroute project-upload-track ("/project/:code/upload-track"
                                                 :method :post) ()
-      (let* ((file-spec (hunchentoot:post-parameter "file")))
-        (log:info "Parameters: ~a~%" file-spec))
-      (respond-500 "Not implemented."))
+      (disable-cached-response)
+      (page-upload-track tracks-directory code))
 
     server))
 
