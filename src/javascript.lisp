@@ -81,12 +81,12 @@
                         null)
                       parenscript:FALSE))
                     xhr))
-            :url (+ "/project/" project-id "/upload-track")
-            :type "POST"
-            :data data
-            "processData" parenscript:FALSE
-            "contentType" parenscript:FALSE
-            done (lambda (data text-status request)
+           :url (+ "/project/" project-id "/upload-track")
+           :type "POST"
+           :data data
+           "processData" parenscript:FALSE
+           "contentType" parenscript:FALSE))
+          (done (lambda (data text-status request)
                    (parenscript:chain
                     (j-query "#file-upload h4")
                     (text "Drag audio file(s) here"))
@@ -95,15 +95,15 @@
                      (perform-upload files
                                      (+ current-file 1)
                                      total-files
-                                     project-id)))
-            fail (lambda (data text-status message)
+                                     project-id))))
+          (fail (lambda (data text-status message)
                    (parenscript:chain
                     (j-query "#file-upload h4")
                     (text "Something went wrong"))
                    (parenscript:chain
                     (j-query "#file-upload p")
                     (text message))))))
-        null))
+      null)
 
     (defun drop-here (event)
       (parenscript:chain event (prevent-default))
