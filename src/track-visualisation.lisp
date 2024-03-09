@@ -16,16 +16,74 @@ than NUMBER-OF-SAMPLES, INPUT is returned."
                   (aref input (1- (* (1+ index) step)))))
           output))))
 
+(defun reduce-array-avg (input number-of-samples)
+  "Returns a reduced number of data points in INPUT by averaging
+the data points, evenly distributed over INPUT.  When INPUT is a
+shorter sequence than NUMBER-OF-SAMPLES, INPUT is returned."
+
+  (let* ((total-samples (array-total-size input))
+         (step          (truncate (/ total-samples number-of-samples))))
+    (if (> number-of-samples total-samples)
+        input
+        (let ((output (make-sequence '(vector integer) number-of-samples)))
+          (dotimes (index (1- number-of-samples))
+            (let ((start (1- (* (1+ index) step))))
+              (setf (aref output index)
+                    (truncate (/ (loop for i from start to (+ start step)
+                                       summing (aref input i))
+                                 (* 1.0 step))))))
+          output))))
+
+(defun reduce-array-max (input number-of-samples)
+  "Returns a reduced number of data points in INPUT by taking
+the maximum value out of a block of the data points, where the
+blocks are evenly distributed over INPUT.  When INPUT is a
+shorter sequence than NUMBER-OF-SAMPLES, INPUT is returned."
+  (let* ((total-samples (array-total-size input))
+         (step          (truncate (/ total-samples number-of-samples))))
+    (if (> number-of-samples total-samples)
+        input
+        (let ((output (make-sequence '(vector integer) number-of-samples)))
+          (dotimes (index (1- number-of-samples))
+            (let ((start-index (1- (* (1+ index) step))))
+              (setf (aref output index)
+                    (loop for i from start-index to (+ start-index step)
+                          maximize (aref input i)))))
+          output))))
+
+(defun reduce-array-median (input number-of-samples)
+  "Returns a reduced number of data points in INPUT by taking
+the minimum value out of a block of the data points, where the
+blocks are evenly distributed over INPUT.  When INPUT is a
+shorter sequence than NUMBER-OF-SAMPLES, INPUT is returned."
+  (let* ((total-samples (array-total-size input))
+         (step          (truncate (/ total-samples number-of-samples)))
+         (median        (truncate (/ number-of-samples 2))))
+    (if (> number-of-samples total-samples)
+        input
+        (let ((output (make-sequence '(vector integer) number-of-samples)))
+          (dotimes (index (1- number-of-samples))
+            (let* ((start (1- (* (1+ index) step)))
+                   (values      (sort (loop for i from start to (+ start step)
+                                            collecting (aref input i))
+                                      #'<))
+                   (median-value (nth median values)))
+              (setf (aref output index) median-value)))
+          output))))
+
 (defun waveform-svg (wav-data output-stream)
   "Writes a visualisation of WAV-DATA to OUTPUT-STREAM."
   (let* ((resolution 112)
-         (values     (reduce-array wav-data resolution))
+         (values     (reduce-array-max wav-data resolution))
          (values-lst (map 'list #'abs values))
          (min-value  (apply #'min values-lst))
          (max-value  (apply #'max values-lst))
-         (x-value    20.0)
          (scene      (cl-svg:make-svg-toplevel 'cl-svg:svg-1.1-toplevel
                                                :height 140 :width 880)))
+    ;; Avoid dividing by zero.
+    (when (= max-value 0)
+      (setf max-value 0.1))
+
     ;; Draw a background with a thick border.
     (cl-svg:make-group scene ()
       (cl-svg:draw* (:rect :x      5
@@ -62,4 +120,3 @@ than NUMBER-OF-SAMPLES, INPUT is returned."
     (dotimes (index iterations)
       (setf (aref output index) (+ start index)))
     output))
-
