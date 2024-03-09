@@ -131,7 +131,8 @@
                 (:p "Or click to open a file dialog."))))))))
 
 (defun page-project (metadata-directory)
-  (let ((code (hunchentoot:post-parameter "project-code")))
+  (let ((code (string-trim '(#\Space #\Tab #\Newline)
+                           (hunchentoot:post-parameter "project-code"))))
     (if (string= code "")
       (let* ((identifier (generate-identifier))
              (filename   (merge-pathnames
