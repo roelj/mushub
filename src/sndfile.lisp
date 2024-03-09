@@ -286,7 +286,7 @@
 ;; OVERLAY FUNCTIONS
 ;; ----------------------------------------------------------------------------
 
-(defun audio-metadata (file-path)
+(defun track-metadata (file-path)
   "Returns two values: A HANDLER for subsequent calls to libsndfile functions
 and an assoc list containing metadata.  The handler should be closed with a
 call to SF-CLOSE."
@@ -301,7 +301,6 @@ call to SF-CLOSE."
                      :format          (foreign-slot-value metadata '(:struct SF_INFO) 'format)
                      :sections        (foreign-slot-value metadata '(:struct SF_INFO) 'sections)
                      :seekable        (foreign-slot-value metadata '(:struct SF_INFO) 'seekable)
-                     :initial-bitrate (sf-current-bitrate file-handle)
                      :title           (sf-get-string file-handle SF_STR_TITLE)
                      :copyright       (sf-get-string file-handle SF_STR_COPYRIGHT)
                      :software        (sf-get-string file-handle SF_STR_SOFTWARE)
@@ -310,10 +309,23 @@ call to SF-CLOSE."
                      :date            (sf-get-string file-handle SF_STR_DATE)
                      :album           (sf-get-string file-handle SF_STR_ALBUM)
                      :license         (sf-get-string file-handle SF_STR_LICENSE)
-                     :tracknumber     (sf-get-string file-handle SF_STR_TRACKNUMBER)
+                     :track-number    (sf-get-string file-handle SF_STR_TRACKNUMBER)
                      :genre           (sf-get-string file-handle SF_STR_GENRE))))
       (foreign-free metadata)
       (values file-handle output))))
+
+(defun track-data (metadata file-handle)
+  (let* ((num-items (* (track-frames metadata)
+                       (track-channels metadata)))
+         (output    (make-array num-items :element-type 'integer)))
+    (with-foreign-object (items :int num-items)
+      (sf-readf-int file-handle items num-items)
+      (dotimes (index num-items)
+        (setf (aref output index) (mem-aref items :int index))
+        ;; (when (evenp index)
+        ;;   )
+        )
+      output)))
 
 (defun broadcast-info (file-handle)
   "Return the Broadcast Extension Chunk in FILE-HANDLE if available."
@@ -376,3 +388,8 @@ call to SF-CLOSE."
             (name      . ,(foreign-string-to-lisp format-name))
             (extension . ,format-extension))
           succesful-exec))))
+
+(defun track-length (metadata)
+  "Returns the length in seconds of the audio track that METADATA describes."
+  (/ (track-frames metadata)
+     (track-sample-rate metadata)))
