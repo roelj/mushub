@@ -19,5 +19,6 @@
   (:import-from :easy-routes  :easy-routes-acceptor)
   (:import-from :uuid         :print-bytes :make-v4-uuid)
   (:import-from :parenscript  :chain :create :FALSE :ps :new)
+  (:import-from :alexandria   :read-file-into-string)
   (:use :cl :cffi)
   (:export :main :start-instance :stop-instance :*version*))

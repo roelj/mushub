@@ -128,7 +128,8 @@
                            :aria-label "Upload file")
               (:div#file-upload :class "upload-container no-select"
                 (:h4 "Drag file(s) here")
-                (:p "Or click to open a file dialog."))))))))
+                (:p "Or click to open a file dialog.")))
+             (:div#tracks))))))
 
 (defun page-project (metadata-directory)
   (let ((code (string-trim '(#\Space #\Tab #\Newline)
@@ -196,7 +197,6 @@
                                                       :direction :input
                                                       :if-does-not-exist :error)
                                 (read handle)))))
-             (log:info "Parsed POST data: '~a'." post-data)
              (set-project-title (assoc-ref :title post-data) metadata)
              (with-open-file (handle filename
                                      :direction :output
@@ -230,7 +230,9 @@
              (log:info "Writing SVG to ~s" svg-filename)
              (let ((data (track-data metadata handle)))
                (waveform-svg data svg-handle)))
-           (respond-with-code nil 204))))
+           (json:encode-json-to-string
+            (cons `(,:visual-uri . ,(format nil "/track/~a/preview.svg" track-uuid))
+                  (track->alist metadata))))))
       ((and (typep file-spec 'list)
             (typep (nth 2 file-spec) 'string))
        (let ((filetype (nth 2 file-spec)))
@@ -387,6 +389,13 @@
       (disable-cached-response)
       (page-upload-track tracks-directory code))
 
+    (easy-routes:defroute project-track-svg ("/track/:track-uuid/preview.svg"
+                                             :method :get) ()
+      (setf (hunchentoot:content-type*) "image/svg+xml; charset=utf-8")
+      (enable-cached-response)
+      (alexandria:read-file-into-string
+       (merge-pathnames (concatenate 'string track-uuid ".svg")
+                        tracks-directory)))
     server))
 
 (defun stop-instance (server)

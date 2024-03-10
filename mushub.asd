@@ -6,7 +6,8 @@
   :license         "AGPLv3+"
   :version         "0.0.1"
   :serial          t
-  :depends-on      (#:cffi
+  :depends-on      (#:alexandria
+                    #:cffi
                     #:cl-css
                     #:cl-json
                     #:cl-svg
