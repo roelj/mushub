@@ -73,28 +73,28 @@ shorter sequence than NUMBER-OF-SAMPLES, INPUT is returned."
 
 (defun waveform-svg (wav-data output-stream)
   "Writes a visualisation of WAV-DATA to OUTPUT-STREAM."
-  (let* ((resolution 112)
+  (let* ((resolution 224)
          (values     (reduce-array-max wav-data resolution))
          (values-lst (map 'list #'abs values))
          (min-value  (apply #'min values-lst))
          (max-value  (apply #'max values-lst))
          (scene      (cl-svg:make-svg-toplevel 'cl-svg:svg-1.1-toplevel
-                                               :height 140 :width 880)))
+                                               :height 134 :width 880)))
     ;; Avoid dividing by zero.
     (when (= max-value 0)
       (setf max-value 0.1))
 
     ;; Draw a background with a thick border.
     (cl-svg:make-group scene ()
-      (cl-svg:draw* (:rect :x      5
-                           :y      5
+      (cl-svg:draw* (:rect :x      2
+                           :y      2
                            :height 130
-                           :width  870
+                           :width  876
                            :fill   "#cfefe8"
                            :rx     10
                            :ry     10
-                           :style  "stroke:#217867;stroke-width:5"))
-      (cl-svg:draw* (:rect :x 10.0 :y 69.5 :height 1   :width 860  :fill "#87decd" :rx 0.5)))
+                           :style  "stroke:#217867;stroke-width:2"))
+      (cl-svg:draw* (:rect :x 10.0 :y 69.5 :height 1 :width 866  :fill "#87decd" :rx 0.5)))
 
     ;; Draw the reduced set of values from the audio data.
     (cl-svg:make-group scene ()
@@ -103,12 +103,12 @@ shorter sequence than NUMBER-OF-SAMPLES, INPUT is returned."
         (let ((y-value (* (/ (- (aref values index) min-value)
                              (- max-value min-value))
                           100.0)))
-          (cl-svg:draw* (:rect :x      (+ 20 (* index 7.5))
+          (cl-svg:draw* (:rect :x      (+ 20 (* index 3.75))
                                :y      (- (/ (- 140.0 y-value) 2.0) 2.5)
                                :height (+ y-value 5)
-                               :width  5.0
+                               :width  2.5
                                :fill   "#217867"
-                               :rx     2.5)))))
+                               :rx     5.0)))))
 
     ;; Write the results to OUTPUT-STREAM.
     (cl-svg:stream-out output-stream scene)))
