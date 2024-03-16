@@ -64,7 +64,7 @@
        (j-query "#tracks")
        (append (+ "<div class=\"track\">"
                   "<img src=\"/track/" (aref metadata "uuid") "/preview.svg"
-                  "\" alt=\"Track visualisation\" />"
+                  "\" alt=\"Track visualisation\" width=\"100%\"/>"
                   "<p><code>" (aref metadata "filename") "</code> "
                   "(" (/ (aref metadata "sampleRate") 1000) "kHz, "
                   (aref metadata "channels") " "
