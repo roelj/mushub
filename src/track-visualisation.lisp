@@ -73,7 +73,7 @@ shorter sequence than NUMBER-OF-SAMPLES, INPUT is returned."
 
 (defun waveform-svg (wav-data output-stream)
   "Writes a visualisation of WAV-DATA to OUTPUT-STREAM."
-  (let* ((resolution 224)
+  (let* ((resolution 448)
          (values     (reduce-array-max wav-data resolution))
          (values-lst (map 'list #'abs values))
          (min-value  (apply #'min values-lst))
@@ -103,12 +103,12 @@ shorter sequence than NUMBER-OF-SAMPLES, INPUT is returned."
         (let ((y-value (* (/ (- (aref values index) min-value)
                              (- max-value min-value))
                           100.0)))
-          (cl-svg:draw* (:rect :x      (+ 20 (* index 3.75))
+          (cl-svg:draw* (:rect :x      (+ 20 (* index 1.875))
                                :y      (- (/ (- 140.0 y-value) 2.0) 2.5)
                                :height (+ y-value 5)
-                               :width  2.5
+                               :width  2.0
                                :fill   "#217867"
-                               :rx     5.0)))))
+                               :rx     1.0)))))
 
     ;; Write the results to OUTPUT-STREAM.
     (cl-svg:stream-out output-stream scene)))
