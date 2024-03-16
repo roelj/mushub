@@ -202,6 +202,16 @@
       (t
        (respond-405 "Only POST is allowed here.")))))
 
+(defun api-project-tracks (metadata-directory code)
+  (let* ((metadata (project-from-disk metadata-directory code)))
+    (if metadata
+        (json:encode-json-to-string
+         (mapcar #'(lambda (instance) (track->alist (eval instance)))
+                 (project-tracks metadata)))
+        (let ((error-message (format nil "Could not find project ~a on disk" code)))
+          (log:error error-message)
+          (respond-500 error-message)))))
+
 (defun page-upload-track (metadata-directory tracks-directory code)
   (let* ((file-spec         (hunchentoot:post-parameter "file"))
          (project-metadata  (project-from-disk metadata-directory code)))
@@ -378,7 +388,13 @@
 
     (easy-routes:defroute api-project-metadata ("/api/v1/project/:code" :method :put) ()
       (disable-cached-response)
+      (setf (hunchentoot:content-type*) "application/json; charset=utf-8")
       (api-update-project-metadata metadata-directory code))
+
+    (easy-routes:defroute api-project-tracks-sym ("/api/v1/:code/tracks" :method :get) ()
+      (disable-cached-response)
+      (setf (hunchentoot:content-type*) "application/json; charset=utf-8")
+      (api-project-tracks metadata-directory code))
 
     ;; UPLOAD TRACK
     ;; ------------------------------------------------------------------------

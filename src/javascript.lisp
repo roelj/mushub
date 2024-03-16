@@ -49,11 +49,21 @@
 
 (defparameter *file-uploader-js*
   (parenscript:ps
+
+    (defun render-tracks-for-project (project-id)
+      (parenscript:chain j-query
+            (ajax (parenscript:create :url (+ "/api/v1/" project-id "/tracks")))
+            (done (lambda (data text-status request)
+                    (dolist (instance data)
+                      (render-track-for-project instance))))
+            (fail (lambda (data text-status message)
+                    ))))
+
     (defun render-track-for-project (metadata)
       (parenscript:chain
        (j-query "#tracks")
        (append (+ "<div class=\"track\">"
-                  "<img src=\"" (aref metadata "visualUri")
+                  "<img src=\"/track/" (aref metadata "uuid") "/preview.svg"
                   "\" alt=\"Track visualisation\" />"
                   "<p><code>" (aref metadata "filename") "</code> "
                   "(" (/ (aref metadata "sampleRate") 1000) "kHz, "
@@ -193,7 +203,8 @@
      (ready (lambda ()
               (let ((project-id (parenscript:chain
                                  window location pathname (split "/") (pop))))
-                (activate-drag-and-drop project-id)))))))
+                (activate-drag-and-drop project-id)
+                (render-tracks-for-project project-id)))))))
 
 (defvar *jquery-3-7-1-min-js*
   #( 47  42  33  32 106  81 117 101 114 121  32 118  51  46  55  46  49  32 124
