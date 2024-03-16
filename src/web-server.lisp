@@ -83,6 +83,7 @@
 (defun respond-500 (message) (respond-with-code message 500))
 (defun respond-406 (message) (respond-with-code message 406))
 (defun respond-405 (message) (respond-with-code message 405))
+(defun respond-404 (message) (respond-with-code message 404))
 
 ;; ERROR HANDLERS
 ;; ----------------------------------------------------------------------------
@@ -135,11 +136,11 @@
   (let ((code (string-trim '(#\Space #\Tab #\Newline)
                            (hunchentoot:post-parameter "project-code"))))
     (if (string= code "")
-      (let* ((identifier (generate-identifier))
-             (filename   (merge-pathnames
-                          (concatenate 'string identifier ".lisp")
-                          metadata-directory))
-             (metadata   (make-instance 'project)))
+        (let* ((metadata   (make-instance 'project))
+               (identifier (project-uuid metadata))
+               (filename   (merge-pathnames
+                            (concatenate 'string identifier ".lisp")
+                            metadata-directory)))
         (log:info "Creating project metadata file ~s." filename)
         (handler-case
             (progn
@@ -187,51 +188,48 @@
   (let ((method (hunchentoot:request-method hunchentoot:*request*)))
     (cond
       ((eq method :put)
-       (handler-case
-           (let* ((filename  (merge-pathnames (concatenate 'string code ".lisp")
-                                              metadata-directory))
-                  (post-data (json:decode-json-from-string
-                               (hunchentoot:raw-post-data :force-text t)))
-                  (metadata  (eval
-                              (with-open-file (handle filename
-                                                      :direction :input
-                                                      :if-does-not-exist :error)
-                                (read handle)))))
-             (set-project-title (assoc-ref :title post-data) metadata)
-             (with-open-file (handle filename
-                                     :direction :output
-                                     :if-exists :supersede)
-               (write (make-load-form metadata) :stream handle))
-             (respond-with-code nil 204))
-         (file-error (error)
-           (log:error error)
-           (respond-500 (format nil "~a" error)))))
+       (let* ((post-data (json:decode-json-from-string
+                          (hunchentoot:raw-post-data :force-text t)))
+              (metadata  (project-from-disk metadata-directory code)))
+         (if metadata
+             (progn
+               (set-project-title (assoc-ref :title post-data) metadata)
+               (project-to-disk metadata-directory metadata)
+               (respond-with-code nil 204))
+             (let ((error-message (format nil "Could not find project ~a on disk" code)))
+               (log:error error-message)
+               (respond-500 error-message)))))
       (t
        (respond-405 "Only POST is allowed here.")))))
 
-(defun page-upload-track (tracks-directory code)
-  (let* ((file-spec (hunchentoot:post-parameter "file")))
+(defun page-upload-track (metadata-directory tracks-directory code)
+  (let* ((file-spec         (hunchentoot:post-parameter "file"))
+         (project-metadata  (project-from-disk metadata-directory code)))
     (cond
+      ((not project-metadata)
+            (log:info "Attempting to upload track to a non-existing project.")
+            (respond-404 "The project this track would be part of does not exist."))
       ((and (typep file-spec 'list)
             (typep (nth 2 file-spec) 'string)
             (string= (subseq (nth 2 file-spec) 0 5) "audio"))
-       (let* ((local-filename (car file-spec))
-              (track-uuid     (generate-identifier))
-              (data-filename  (merge-pathnames track-uuid tracks-directory))
-              (svg-filename   (merge-pathnames (concatenate 'string track-uuid ".svg")
-                                               tracks-directory)))
-         (multiple-value-bind (handle metadata)
-             (track-metadata local-filename)
-           (log:info "Read metadata for ~a: ~s" track-uuid metadata)
-           (uiop:copy-file local-filename data-filename)
+       (multiple-value-bind (handle metadata)
+           (track-metadata (car file-spec))
+         (let* ((uuid          (track-uuid metadata))
+                (data-filename (merge-pathnames uuid tracks-directory))
+                (svg-filename  (merge-pathnames (concatenate 'string uuid ".svg")
+                                                tracks-directory))
+                (data          (track-data metadata handle)))
+           (set-track-filename (cadr file-spec) metadata)
+           (project-cons-track project-metadata metadata)
+           (project-to-disk metadata-directory project-metadata)
+           (uiop:copy-file (car file-spec) data-filename)
            (with-open-file (svg-handle svg-filename
                                        :direction :output
                                        :if-exists :supersede)
              (log:info "Writing SVG to ~s" svg-filename)
-             (let ((data (track-data metadata handle)))
-               (waveform-svg data svg-handle)))
+             (waveform-svg data svg-handle))
            (json:encode-json-to-string
-            (cons `(,:visual-uri . ,(format nil "/track/~a/preview.svg" track-uuid))
+            (cons `(,:visual-uri . ,(format nil "/track/~a/preview.svg" uuid))
                   (track->alist metadata))))))
       ((and (typep file-spec 'list)
             (typep (nth 2 file-spec) 'string))
@@ -387,7 +385,7 @@
     (easy-routes:defroute project-upload-track ("/project/:code/upload-track"
                                                 :method :post) ()
       (disable-cached-response)
-      (page-upload-track tracks-directory code))
+      (page-upload-track metadata-directory tracks-directory code))
 
     (easy-routes:defroute project-track-svg ("/track/:track-uuid/preview.svg"
                                              :method :get) ()

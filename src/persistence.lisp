@@ -43,7 +43,27 @@
 
 (defun project-cons-track (instance track)
   (let ((tracks (project-tracks instance)))
-    (set-project-tracks (cons track tracks) instance)))
+    (set-project-tracks (cons (make-load-form track) tracks) instance)))
+
+(defun project-from-disk (base-pathname project-uuid)
+  (let ((filename  (merge-pathnames (concatenate 'string project-uuid ".lisp")
+                                    base-pathname)))
+    (eval
+     (with-open-file (handle filename
+                             :direction :input
+                             :if-does-not-exist nil)
+       (if handle
+           (read handle)
+           nil)))))
+
+(defun project-to-disk (base-pathname metadata)
+  (with-open-file (handle (merge-pathnames (concatenate 'string
+                                             (project-uuid metadata)
+                                             ".lisp")
+                                           base-pathname)
+                          :direction :output
+                          :if-exists :supersede)
+    (write (make-load-form metadata) :stream handle)))
 
 ;; ----------------------------------------------------------------------------
 ;; TRACK
