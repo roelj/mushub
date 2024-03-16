@@ -47,13 +47,22 @@
                (on "input" automatically-save-form))
               null)))))
 
-(defvar *file-uploader-js*
+(defparameter *file-uploader-js*
   (parenscript:ps
-    (defun render-track-for-project (project-id metadata)
+    (defun render-track-for-project (metadata)
       (parenscript:chain
        (j-query "#tracks")
-       (append (+ "<img src=\"" (aref metadata "visualUri")
-                  "\" alt=\"Track visualisation\" />"))))
+       (append (+ "<div class=\"track\">"
+                  "<img src=\"" (aref metadata "visualUri")
+                  "\" alt=\"Track visualisation\" />"
+                  "<p><code>" (aref metadata "filename") "</code> "
+                  "(" (/ (aref metadata "sampleRate") 1000) "kHz, "
+                  (aref metadata "channels") " "
+                  (if (> (aref metadata "channels") 1)
+                      "channels"
+                      "channel")
+                  ")</p>"
+                  "</div>"))))
 
     (defun perform-upload (files current-file project-id)
       (let ((total-files (parenscript:chain files length))
@@ -97,7 +106,7 @@
                     (j-query "#file-upload h4")
                     (text "Drag audio file(s) here"))
                   (let ((parsed-data (parenscript:chain -j-s-o-n (parse data))))
-                    (render-track-for-project project-id parsed-data))
+                    (render-track-for-project parsed-data))
                    (when (< current-file total-files)
                      (perform-upload files
                                      (+ current-file 1)

@@ -158,6 +158,10 @@
      :text-align     "right"
      :margin         "0px"
      :padding        "0px")
+    (".track p"
+     :text-size      "0.75em"
+     :margin         "0em"
+     :padding        "0em 0em 1em 0em")
     (".error-text"
      :color          "#990000 !important"
      :font-weight    "bold")))
