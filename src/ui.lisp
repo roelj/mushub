@@ -45,35 +45,6 @@
            (opts:exit 1)))
      ,body))
 
-(defun main-real ()
-  "The function at which the program starts."
-
-  (opts:define-opts
-    (:name :help
-     :description "This help text."
-     :short #\h
-     :long "help")
-    (:name :version
-     :description "Version information."
-     :short #\v
-     :long "version"))
-
-  (let ((subcommand (cadr (opts:argv))))
-    (cond
-      ((string= subcommand "web")         (web-main))
-      ((string= subcommand "initialize")  (initialize-main))
-      (t
-       (with-option-handling options free-args
-         (progn
-           (when (or (null options)
-                     (getf options :help))
-             (show-usage nil)
-             (opts:exit 0))
-
-           (when (getf options :version)
-             (format *standard-output* "mushub ~a.~%" *version*)
-             (opts:exit 0))))))))
-
 (defun initialize-main ()
   "The function handling the 'initialize' subcommand options."
 
@@ -89,6 +60,9 @@
 
   (with-option-handling options free-args
     (progn
+      (unless (equal free-args '("initialize"))
+        (log:info "Ignoring the following free arguments: ~s." (cdr free-args)))
+
       (when (or (null options)
                 (getf options :help))
         (show-usage "initialize")
@@ -120,6 +94,9 @@
 
   (with-option-handling options free-args
     (progn
+      (unless (equal free-args '("web"))
+        (log:info "Ignoring the following free arguments: ~s." (cdr free-args)))
+
       (when (getf options :help)
         (show-usage "web")
         (opts:exit 0))
@@ -129,6 +106,38 @@
                       ;; (getf options :document-root)
                       )
       (loop (sleep 1)))))
+
+(defun main-real ()
+  "The function at which the program starts."
+
+  (opts:define-opts
+    (:name :help
+     :description "This help text."
+     :short #\h
+     :long "help")
+    (:name :version
+     :description "Version information."
+     :short #\v
+     :long "version"))
+
+  (let ((subcommand (cadr (opts:argv))))
+    (cond
+      ((string= subcommand "web")         (web-main))
+      ((string= subcommand "initialize")  (initialize-main))
+      (t
+       (with-option-handling options free-args
+         (progn
+           (unless free-args
+             (log:info "Ignoring the following free arguments: ~s." free-args))
+
+           (when (or (null options)
+                     (getf options :help))
+             (show-usage nil)
+             (opts:exit 0))
+
+           (when (getf options :version)
+             (format *standard-output* "mushub ~a.~%" *version*)
+             (opts:exit 0))))))))
 
 (defun main ()
   "Wrapper for the main function that handles various signals."
