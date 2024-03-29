@@ -32,7 +32,7 @@
      (setf (hunchentoot:header-out :Server) *server-name*)
      (with-template-page ,body)))
 
-(defmacro with-template-page (content)
+(defmacro with-template-page (content &optional scripts)
   (let ((*print-pretty* t))
     `(spinneret:with-html-string
        (:doctype)
@@ -47,11 +47,12 @@
                (:meta  :name "keywords"    :content "mushub")
                (:meta  :name "author"      :content "Roel Janssen")
                (:link :rel "stylesheet" :type "text/css" :href "/css/main.css")
-               (:style :type "text/css"
-                       (:raw (cl-css:css *stylesheet*)))
-               (:script :src "/scripts/jquery-3.7.1.min.js")
-               (:script :src "/scripts/file-uploader.js")
-               (:script :src "/scripts/project.js"))
+               ,@(unless (null (position 'jquery scripts))
+                   '((:script :src "/scripts/jquery-3.7.1.min.js")))
+               ,@(unless (null (position 'file-uploader scripts))
+                   '((:script :src "/scripts/file-uploader.js")))
+               ,@(unless (null (position 'project scripts))
+                   '((:script :src "/scripts/project.js"))))
         (:body
          (:div#wrapper
           (:div#header
@@ -63,8 +64,7 @@
                                 :placeholder "")
               (:input#submit-btn :type "submit" :value "GO"))))
           (:div#content ,content)
-          (:div#footer
-           (:p ""))))))))
+          (:div#footer (:p ""))))))))
 
 (defun respond-with-code (message code)
   (cond
@@ -93,8 +93,7 @@
        (acceptor (http-status-code (eql ,status-code)) &key)
      (setf (hunchentoot:content-type*) "text/html; charset=utf-8")
      (setf (hunchentoot:header-out :server) *server-name*)
-     (let ((*print-pretty* nil))
-       (with-template-page ,body))))
+     (with-template-page ,body)))
 
 (defun metadata-for-project (metadata-directory code)
   (let* ((filename (merge-pathnames (concatenate 'string code ".lisp")
@@ -112,7 +111,7 @@
 (defun page-project-code (metadata-directory code)
   (let ((metadata (metadata-for-project metadata-directory code)))
     (with-template-page
-      (list (:form :id "project-form"
+      (:form :id "project-form"
              (:div#last-modified (:p "Unsaved"))
              (:input :type "text"
                      :name "title"
@@ -130,7 +129,8 @@
               (:div#file-upload :class "upload-container no-select"
                 (:h4 "Drag file(s) here")
                 (:p "Or click to open a file dialog.")))
-             (:div#tracks))))))
+             (:div#tracks))
+      (jquery file-uploader project))))
 
 (defun page-project (metadata-directory)
   (let ((code (string-trim '(#\Space #\Tab #\Newline)

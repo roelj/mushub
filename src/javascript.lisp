@@ -54,10 +54,9 @@
       (parenscript:chain j-query
             (ajax (parenscript:create :url (+ "/api/v1/" project-id "/tracks")))
             (done (lambda (data text-status request)
-                    (dolist (instance data)
-                      (render-track-for-project instance))))
-            (fail (lambda (data text-status message)
-                    ))))
+                    (unless (null data)
+                      (dolist (instance data)
+                        (render-track-for-project instance)))))))
 
     (defun render-track-for-project (metadata)
       (parenscript:chain
