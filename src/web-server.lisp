@@ -48,7 +48,7 @@
                (:meta  :name "author"      :content "Roel Janssen")
                (:link :rel "stylesheet" :type "text/css" :href "/css/main.css")
                ,@(unless (null (position 'jquery scripts))
-                   '((:script :src "/scripts/jquery-3.7.1.min.js")))
+                   '((:script :src "/scripts/jquery-4.0.0-beta.min.js")))
                ,@(unless (null (position 'file-uploader scripts))
                    '((:script :src "/scripts/file-uploader.js")))
                ,@(unless (null (position 'project scripts))
@@ -341,10 +341,10 @@
 
     ;; JAVASCRIPT
     ;; ------------------------------------------------------------------------
-    (easy-routes:defroute jquery-3-7-1-min-js ("/scripts/jquery-3.7.1.min.js") ()
+    (easy-routes:defroute jquery-4-0-0-beta-min-js ("/scripts/jquery-4.0.0-beta.min.js") ()
       (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
       (enable-cached-response)
-      *jquery-3-7-1-min-js*)
+      *jquery-4-0-0-beta-min-js*)
 
     (easy-routes:defroute file-uploader ("/scripts/file-uploader.js") ()
       (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
