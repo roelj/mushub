@@ -64,14 +64,14 @@
        (append (+ "<div class=\"track\">"
                   "<img src=\"/track/" (aref metadata "uuid") "/preview.svg"
                   "\" alt=\"Track visualisation\" width=\"100%\"/>"
-                  "<p><code>" (aref metadata "filename") "</code> "
+                  "<p><a href=\"/track/" (aref metadata "uuid") "/download\"><code>"
+                  (aref metadata "filename") "</code></a> "
                   "(" (/ (aref metadata "sampleRate") 1000) "kHz, "
                   (aref metadata "channels") " "
                   (if (> (aref metadata "channels") 1)
                       "channels"
                       "channel")
-                  ")</p>"
-                  "</div>"))))
+                  ")</p></div>"))))
 
     (defun perform-upload (files current-file project-id)
       (let ((total-files (parenscript:chain files length))

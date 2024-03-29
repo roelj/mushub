@@ -212,6 +212,12 @@
           (log:error error-message)
           (respond-500 error-message)))))
 
+(defun download-track (tracks-directory uuid)
+  (let ((filename (merge-pathnames uuid tracks-directory)))
+    (setf (hunchentoot:header-out :Content-Disposition)
+          (format nil "attachment; filename=~s" (concatenate 'string uuid ".wav")))
+    (hunchentoot:handle-static-file filename)))
+
 (defun page-upload-track (metadata-directory tracks-directory code)
   (let* ((file-spec         (hunchentoot:post-parameter "file"))
          (project-metadata  (project-from-disk metadata-directory code)))
@@ -402,6 +408,10 @@
                                                 :method :post) ()
       (disable-cached-response)
       (page-upload-track metadata-directory tracks-directory code))
+
+    (easy-routes:defroute download-track-sym ("/track/:track-uuid/download"
+                                              :method :get) ()
+      (download-track tracks-directory track-uuid))
 
     (easy-routes:defroute project-track-svg ("/track/:track-uuid/preview.svg"
                                              :method :get) ()
