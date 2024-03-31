@@ -16,7 +16,9 @@
                    :data (ps:chain *json* (stringify data))
                    "contentType" "application/json"))
             (done (lambda (data text-status request)
-                    (let ((timestamp (new (parenscript:chain (*date) (to-locale-time-string)))))
+                    (let ((timestamp (new (parenscript:chain
+                                           (*date)
+                                           (to-locale-time-string)))))
                       (parenscript:chain (j-query "#last-modified p")
                                          (html (+ "Last saved: " timestamp))
                                          (remove-class "error-text")))))
