@@ -25,6 +25,9 @@
      :background     "#f5fcfb"
      :font-family    "'MavenPro',sans-serif"
      :font-size      "20px")
+    ("a"        :color "#217867")
+    ("a:hover"  :color "#103c33")
+    ("a:active" :color "#051411")
     (".action-button"
      :padding        ".5em"
      :margin-bottom   "1em"
