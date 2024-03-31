@@ -136,29 +136,21 @@
   (let ((code (string-trim '(#\Space #\Tab #\Newline)
                            (hunchentoot:post-parameter "project-code"))))
     (if (string= code "")
-        (let* ((metadata   (make-instance 'project))
-               (identifier (project-uuid metadata))
-               (filename   (merge-pathnames
-                            (concatenate 'string identifier ".lisp")
-                            metadata-directory)))
-        (log:info "Creating project metadata file ~s." filename)
         (handler-case
-            (progn
-              (with-open-file (handle filename
-                                      :direction :output
-                                      :if-does-not-exist :create)
-                (write (make-load-form metadata) :stream handle))
+            (let* ((metadata   (make-instance 'project))
+                   (identifier (project-uuid metadata)))
+              (project-to-disk metadata-directory metadata)
               (hunchentoot:redirect
                (concatenate 'string "/project/" identifier) :code 302))
           (file-error (error)
             (log:error error)
-            (respond-500 (format nil "~a" error)))))
-      (progn
-        (log:info "Client: ~a:~d"
-                  (hunchentoot:real-remote-addr *request*)
-                  (hunchentoot:remote-port *request*))
-        (hunchentoot:redirect (concatenate 'string "/project/" code)
-                              :code 302)))))
+            (respond-500 (format nil "~a" error))))
+        (progn
+          (log:info "Client: ~a:~d"
+                    (hunchentoot:real-remote-addr *request*)
+                    (hunchentoot:remote-port *request*))
+          (hunchentoot:redirect (concatenate 'string "/project/" code)
+                                :code 302)))))
 
 (defun page-credits ()
   (with-template-page
@@ -212,10 +204,11 @@
           (log:error error-message)
           (respond-500 error-message)))))
 
-(defun download-track (tracks-directory uuid)
-  (let ((filename (merge-pathnames uuid tracks-directory)))
+(defun download-track (tracks-directory metadata-directory uuid)
+  (let ((filename (merge-pathnames uuid tracks-directory))
+        (metadata (track-metadata-from-disk metadata-directory uuid)))
     (setf (hunchentoot:header-out :Content-Disposition)
-          (format nil "attachment; filename=~s" (concatenate 'string uuid ".wav")))
+          (format nil "attachment; filename=~s" (track-filename metadata)))
     (hunchentoot:handle-static-file filename)))
 
 (defun page-upload-track (metadata-directory tracks-directory code)
@@ -223,7 +216,7 @@
          (project-metadata  (project-from-disk metadata-directory code)))
     (cond
       ((not project-metadata)
-            (log:info "Attempting to upload track to a non-existing project.")
+            (log:error "Attempting to upload track to a non-existing project.")
             (respond-404 "The project this track would be part of does not exist."))
       ((and (typep file-spec 'list)
             (typep (nth 2 file-spec) 'string)
@@ -236,13 +229,13 @@
                                                 tracks-directory))
                 (data          (track-data metadata handle)))
            (set-track-filename (cadr file-spec) metadata)
+           (track-metadata-to-disk metadata-directory metadata)
            (project-cons-track project-metadata metadata)
            (project-to-disk metadata-directory project-metadata)
            (uiop:copy-file (car file-spec) data-filename)
            (with-open-file (svg-handle svg-filename
                                        :direction :output
                                        :if-exists :supersede)
-             (log:info "Writing SVG to ~s" svg-filename)
              (waveform-svg data svg-handle))
            (json:encode-json-to-string
             (cons `(,:visual-uri . ,(format nil "/track/~a/preview.svg" uuid))
@@ -250,7 +243,6 @@
       ((and (typep file-spec 'list)
             (typep (nth 2 file-spec) 'string))
        (let ((filetype (nth 2 file-spec)))
-         (log:info "User uploaded ~s." filetype)
          (respond-400 (format nil "'~a' is not a supported file type." filetype))))
       (t
        (log:info "Woops, file-spec set to: ~a." file-spec)
@@ -411,7 +403,7 @@
 
     (easy-routes:defroute download-track-sym ("/track/:track-uuid/download"
                                               :method :get) ()
-      (download-track tracks-directory track-uuid))
+      (download-track tracks-directory metadata-directory track-uuid))
 
     (easy-routes:defroute project-track-svg ("/track/:track-uuid/preview.svg"
                                              :method :get) ()

@@ -43,22 +43,49 @@
 
 (defun project-cons-track (instance track)
   (let ((tracks (project-tracks instance)))
-    (set-project-tracks (cons (make-load-form track) tracks) instance)))
+    (set-project-tracks (cons track tracks) instance)))
 
 (defun project-from-disk (base-pathname project-uuid)
   (let ((filename  (merge-pathnames (concatenate 'string project-uuid ".lisp")
                                     base-pathname)))
-    (eval
-     (with-open-file (handle filename
-                             :direction :input
-                             :if-does-not-exist nil)
-       (if handle
-           (read handle)
-           nil)))))
+    (with-open-file (handle filename
+                            :direction :input
+                            :if-does-not-exist nil)
+      (if handle
+          (let ((metadata (eval (read handle))))
+            (set-project-tracks (mapcar #'(lambda (track)
+                                            (track-metadata-from-disk
+                                             base-pathname track))
+                                        (project-tracks metadata))
+                                metadata)
+            metadata)
+          nil))))
+
+(defun track-metadata-from-disk (base-pathname identifier)
+  (let ((filename (merge-pathnames (concatenate 'string identifier ".lisp")
+                                   base-pathname)))
+    (with-open-file (handle filename :direction :input
+                                     :if-does-not-exist nil)
+      (if handle
+          (eval (read handle))
+          nil))))
 
 (defun project-to-disk (base-pathname metadata)
   (with-open-file (handle (merge-pathnames (concatenate 'string
                                              (project-uuid metadata)
+                                             ".lisp")
+                                           base-pathname)
+                          :direction :output
+                          :if-exists :supersede)
+    (let ((tracks (project-tracks metadata)))
+      (set-project-tracks
+       (mapcar #'track-uuid (project-tracks metadata)) metadata)
+      (write (make-load-form metadata) :stream handle)
+      (set-project-tracks tracks metadata))))
+
+(defun track-metadata-to-disk (base-pathname metadata)
+  (with-open-file (handle (merge-pathnames (concatenate 'string
+                                             (track-uuid metadata)
                                              ".lisp")
                                            base-pathname)
                           :direction :output
