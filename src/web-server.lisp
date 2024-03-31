@@ -311,29 +311,29 @@
     ;; FONTS
     ;; ------------------------------------------------------------------------
 
-    (easy-routes:defroute firacode-medium-ttf ("/static/fonts/FiraCode-Medium.ttf") ()
+    (easy-routes:defroute firacode-ttf ("/static/fonts/FiraCode-Medium.ttf") ()
       (setf (hunchentoot:content-type*) "font/ttf")
       (enable-cached-response)
       *firacode-medium-ttf*)
 
-    (easy-routes:defroute firacode-medium-woff2 ("/static/fonts/FiraCode-Medium.woff2") ()
+    (easy-routes:defroute firacode-woff2 ("/static/fonts/FiraCode-Medium.woff2") ()
       (setf (hunchentoot:content-type*) "font/woff2")
       (enable-cached-response)
       *firacode-medium-woff2*)
 
-    (easy-routes:defroute mavenpro-medium-ttf ("/static/fonts/MavenPro-Medium.ttf") ()
+    (easy-routes:defroute mavenpro-ttf ("/static/fonts/MavenPro-Medium.ttf") ()
       (setf (hunchentoot:content-type*) "font/ttf")
       (enable-cached-response)
       *mavenpro-medium-ttf*)
 
-    (easy-routes:defroute mavenpro-medium-woff2 ("/static/fonts/MavenPro-Medium.woff2") ()
+    (easy-routes:defroute mavenpro-woff2 ("/static/fonts/MavenPro-Medium.woff2") ()
       (setf (hunchentoot:content-type*) "font/woff2")
       (enable-cached-response)
       *mavenpro-medium-woff2*)
 
     ;; JAVASCRIPT
     ;; ------------------------------------------------------------------------
-    (easy-routes:defroute jquery-4-0-0-beta-min-js ("/scripts/jquery-4.0.0-beta.min.js") ()
+    (easy-routes:defroute jquery-js ("/scripts/jquery-4.0.0-beta.min.js") ()
       (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
       (enable-cached-response)
       *jquery-4-0-0-beta-min-js*)
@@ -384,12 +384,14 @@
       (disable-cached-response)
       (page-project-code metadata-directory code))
 
-    (easy-routes:defroute api-project-metadata ("/api/v1/project/:code" :method :put) ()
+    (easy-routes:defroute api-project-metadata ("/api/v1/project/:code"
+                                                :method :put) ()
       (disable-cached-response)
       (setf (hunchentoot:content-type*) "application/json; charset=utf-8")
       (api-update-project-metadata metadata-directory code))
 
-    (easy-routes:defroute api-project-tracks-sym ("/api/v1/:code/tracks" :method :get) ()
+    (easy-routes:defroute api-project-tracks-sym ("/api/v1/:code/tracks"
+                                                  :method :get) ()
       (disable-cached-response)
       (setf (hunchentoot:content-type*) "application/json; charset=utf-8")
       (api-project-tracks metadata-directory code))
