@@ -101,21 +101,8 @@
      (setf (hunchentoot:header-out :server) *server-name*)
      (with-template-page ,body)))
 
-(defun metadata-for-project (metadata-directory code)
-  (let* ((filename (merge-pathnames (concatenate 'string code ".lisp")
-                                    metadata-directory)))
-    (handler-case
-        (eval
-         (with-open-file (handle filename
-                                 :direction :input
-                                 :if-does-not-exist :error)
-           (read handle)))
-      (file-error (error)
-        (log:error error)
-        nil))))
-
 (defun page-project-code (metadata-directory code)
-  (let ((metadata (metadata-for-project metadata-directory code)))
+  (let ((metadata (project-from-disk metadata-directory code)))
     (with-template-page
       (:form :id "project-form"
              (:div#last-modified (:p "Unsaved"))

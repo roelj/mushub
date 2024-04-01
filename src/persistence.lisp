@@ -255,7 +255,7 @@
     (set-project-tracks (cons track tracks) instance)))
 
 (defun track-metadata-from-disk (base-pathname identifier)
-  (let ((filename (merge-pathnames (concatenate 'string identifier ".lisp")
+  (let ((filename (merge-pathnames (concatenate 'string "track-" identifier ".lisp")
                                    base-pathname)))
     (with-open-file (handle filename :direction :input
                                      :if-does-not-exist nil)
@@ -264,7 +264,7 @@
           nil))))
 
 (defun project-from-disk (base-pathname project-uuid)
-  (let ((filename  (merge-pathnames (concatenate 'string project-uuid ".lisp")
+  (let ((filename  (merge-pathnames (concatenate 'string "project-" project-uuid ".lisp")
                                     base-pathname)))
     (with-open-file (handle filename
                             :direction :input
@@ -281,6 +281,7 @@
 
 (defun project-to-disk (base-pathname metadata)
   (with-open-file (handle (merge-pathnames (concatenate 'string
+                                             "project-"
                                              (project-uuid metadata)
                                              ".lisp")
                                            base-pathname)
@@ -294,6 +295,7 @@
 
 (defun track-metadata-to-disk (base-pathname metadata)
   (with-open-file (handle (merge-pathnames (concatenate 'string
+                                             "track-"
                                              (track-uuid metadata)
                                              ".lisp")
                                            base-pathname)
