@@ -47,8 +47,14 @@
                (:meta  :name "keywords"    :content "mushub")
                (:meta  :name "author"      :content "Roel Janssen")
                (:link :rel "stylesheet" :type "text/css" :href "/css/main.css")
+               ,@(unless (null (position 'quill scripts))
+                   '((:link  :rel "stylesheet"
+                             :type "text/css"
+                             :href "/css/quill.bubble.css")))
                ,@(unless (null (position 'jquery scripts))
                    '((:script :src "/scripts/jquery-4.0.0-beta.min.js")))
+               ,@(unless (null (position 'quill scripts))
+                   '((:script :src "/scripts/quill.min.js")))
                ,@(unless (null (position 'file-uploader scripts))
                    '((:script :src "/scripts/file-uploader.js")))
                ,@(unless (null (position 'project scripts))
@@ -61,7 +67,7 @@
             (:form :action "/project" :method "post"
               (:input#song-code :type "text" :name "project-code"
                                 :title "Project code"
-                                :placeholder "")
+                                :placeholder "Project identifier")
               (:input#submit-btn :type "submit" :value "GO"))))
           (:div#content ,content)
           (:div#footer (:p ""))))))))
@@ -120,6 +126,9 @@
                      :value (if (typep metadata 'project) (project-title metadata) ""))
              (:p (:strong :class "no-select" "Project identifier:")
                  (:code :id "project-uuid" code))
+             (:div
+              (:label "Notes")
+              (:div :id "editor" (:raw (project-notes metadata))))
              (:p "")
              (:div#file-upload-field :class "upload-wrapper record-type-field"
               (:input#file :type "file"
@@ -130,7 +139,7 @@
                 (:h4 "Drag file(s) here")
                 (:p "Or click to open a file dialog.")))
              (:div#tracks))
-      (jquery file-uploader project))))
+      (jquery quill file-uploader project))))
 
 (defun page-project (metadata-directory)
   (let ((code (string-trim '(#\Space #\Tab #\Newline)
@@ -139,6 +148,7 @@
         (handler-case
             (let* ((metadata   (make-instance 'project))
                    (identifier (project-uuid metadata)))
+              (set-project-notes "Put your project notes here." metadata)
               (project-to-disk metadata-directory metadata)
               (hunchentoot:redirect
                (concatenate 'string "/project/" identifier) :code 302))
@@ -186,6 +196,7 @@
          (if metadata
              (progn
                (set-project-title (assoc-ref :title post-data) metadata)
+               (set-project-notes (assoc-ref :notes post-data) metadata)
                (project-to-disk metadata-directory metadata)
                (respond-with-code nil 204))
              (let ((error-message (format nil "Could not find project ~a on disk" code)))
@@ -338,6 +349,11 @@
       (enable-cached-response)
       *jquery-4-0-0-beta-min-js*)
 
+    (easy-routes:defroute quill-js ("/scripts/quill.min.js") ()
+      (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
+      (enable-cached-response)
+      *quill-2-0-0-rc4-min-js*)
+
     (easy-routes:defroute file-uploader ("/scripts/file-uploader.js") ()
       (setf (hunchentoot:content-type*) "application/javascript; charset=utf-8")
       (enable-cached-response)
@@ -354,6 +370,11 @@
       (setf (hunchentoot:content-type*) "text/css; charset=utf-8")
       (enable-cached-response)
       (cl-css:css *stylesheet*))
+
+    (easy-routes:defroute quill-bubble-css ("/css/quill.bubble.css") ()
+      (setf (hunchentoot:content-type*) "text/css; charset=utf-8")
+      (enable-cached-response)
+      *quill-bubble-css*)
 
     ;; MAIN PAGE
     ;; ------------------------------------------------------------------------

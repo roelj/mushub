@@ -16,6 +16,11 @@
                     :initform  ""
                     :reader    project-title
                     :writer    set-project-title)
+   (notes           :initarg   :notes
+                    :type      string
+                    :initform  ""
+                    :reader    project-notes
+                    :writer    set-project-notes)
    (last-modified   :initarg   :last-modified
                     :type      integer
                     :initform  (get-universal-time)
@@ -37,6 +42,7 @@
   `(make-instance 'project
                   :uuid           ,(project-uuid          instance)
                   :title          ,(project-title         instance)
+                  :notes          ,(project-notes         instance)
                   :last-modified  ,(project-last-modified instance)
                   :created        ,(project-created       instance)
                   :tracks        ',(project-tracks        instance)))
